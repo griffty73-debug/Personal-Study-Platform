@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
+export type ThemeStyle = 'default' | 'cyberpunk' | 'xianxia'
+export type BackgroundStyle = 'smooth' | 'mirror' | 'ripple' | 'paper'
 export type AccentTone = 'forest' | 'ocean' | 'plum' | 'amber' | 'graphite'
 export type Density = 'comfortable' | 'compact'
 export type MotionLevel = 'standard' | 'reduced' | 'off'
@@ -10,6 +12,19 @@ export const themeOptions: { value: ThemeMode; label: string }[] = [
   { value: 'light', label: '浅色' },
   { value: 'dark', label: '深色' },
   { value: 'system', label: '跟随系统' },
+]
+
+export const styleOptions: { value: ThemeStyle; label: string; description: string; swatch: string; accent: string; surface: string }[] = [
+  { value: 'default', label: '默认', description: '清晰、平滑、适合长期使用', swatch: '#39776d', accent: '#c85f47', surface: '#fffdfa' },
+  { value: 'cyberpunk', label: '赛博朋克', description: '霓虹、锐角、夜间终端感', swatch: '#7df9ff', accent: '#ff3cac', surface: '#111827' },
+  { value: 'xianxia', label: '仙侠', description: '宣纸、墨色、金红与留白', swatch: '#b84b35', accent: '#c5a15a', surface: '#f5eddd' },
+]
+
+export const backgroundOptions: { value: BackgroundStyle; label: string; description: string }[] = [
+  { value: 'smooth', label: '平滑', description: '柔和渐变，视觉最安静' },
+  { value: 'mirror', label: '镜面', description: '有反射感的横向光带' },
+  { value: 'ripple', label: '水波', description: '移动鼠标泛起涟漪，交叠后自然散去' },
+  { value: 'paper', label: '纸面', description: '带有细微褶皱的自然肌理' },
 ]
 
 export const accentOptions: { value: AccentTone; label: string; description: string; swatch: string; accent: string; surface: string }[] = [
@@ -40,6 +55,8 @@ const appearanceKey = 'better-self:appearance'
 
 type AppearanceState = {
   theme: ThemeMode
+  style: ThemeStyle
+  background: BackgroundStyle
   accent: AccentTone
   density: Density
   motion: MotionLevel
@@ -54,6 +71,8 @@ function storageAvailable() {
 export const useAppearanceStore = defineStore('appearance', {
   state: (): AppearanceState => ({
     theme: 'light',
+    style: 'default',
+    background: 'smooth',
     accent: 'forest',
     density: 'comfortable',
     motion: 'standard',
@@ -67,7 +86,15 @@ export const useAppearanceStore = defineStore('appearance', {
         const saved = window.localStorage.getItem(appearanceKey)
         if (saved) {
           try {
-            Object.assign(this, JSON.parse(saved))
+            const parsed = JSON.parse(saved) as Partial<AppearanceState>
+            if (parsed.theme && ['light', 'dark', 'system'].includes(parsed.theme)) this.theme = parsed.theme
+            if (parsed.style && ['default', 'cyberpunk', 'xianxia'].includes(parsed.style)) this.style = parsed.style
+            if (parsed.background && ['smooth', 'mirror', 'ripple', 'paper'].includes(parsed.background)) this.background = parsed.background
+            if ((parsed.background as string) === 'flat') this.background = 'paper'
+            if (parsed.accent && accentOptions.some(option => option.value === parsed.accent)) this.accent = parsed.accent
+            if (parsed.density && ['comfortable', 'compact'].includes(parsed.density)) this.density = parsed.density
+            if (parsed.motion && ['standard', 'reduced', 'off'].includes(parsed.motion)) this.motion = parsed.motion
+            if (parsed.radius && ['modern', 'crisp'].includes(parsed.radius)) this.radius = parsed.radius
           } catch {
             window.localStorage.removeItem(appearanceKey)
           }
@@ -79,6 +106,8 @@ export const useAppearanceStore = defineStore('appearance', {
         if (storageAvailable()) {
           window.localStorage.setItem(appearanceKey, JSON.stringify({
             theme: this.theme,
+            style: this.style,
+            background: this.background,
             accent: this.accent,
             density: this.density,
             motion: this.motion,
@@ -90,6 +119,12 @@ export const useAppearanceStore = defineStore('appearance', {
     },
     setTheme(theme: ThemeMode) {
       this.theme = theme
+    },
+    setStyle(style: ThemeStyle) {
+      this.style = style
+    },
+    setBackground(background: BackgroundStyle) {
+      this.background = background
     },
     setAccent(accent: AccentTone) {
       this.accent = accent
@@ -105,6 +140,8 @@ export const useAppearanceStore = defineStore('appearance', {
     },
     reset() {
       this.theme = 'light'
+      this.style = 'default'
+      this.background = 'smooth'
       this.accent = 'forest'
       this.density = 'comfortable'
       this.motion = 'standard'
@@ -114,6 +151,8 @@ export const useAppearanceStore = defineStore('appearance', {
       if (typeof document === 'undefined') return
       const root = document.documentElement
       root.dataset.theme = this.theme
+      root.dataset.style = this.style
+      root.dataset.background = this.background
       root.dataset.accent = this.accent
       root.dataset.density = this.density
       root.dataset.motion = this.motion

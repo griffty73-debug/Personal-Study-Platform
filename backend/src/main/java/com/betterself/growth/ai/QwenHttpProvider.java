@@ -2,6 +2,7 @@ package com.betterself.growth.ai;
 
 import com.betterself.growth.shared.api.ApiException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -66,21 +68,23 @@ public class QwenHttpProvider implements QwenProvider {
     @Override
     public StructuredResult generateStructured(StructuredPrompt prompt) {
         long started = System.nanoTime();
-        JsonNode root = call(List.of(
-            Map.of("role", "system", "content", "Return only JSON matching this schema: " + prompt.schemaJson()),
+        List<Map<String, String>> messages = new ArrayList<>(List.of(
+            Map.of("role", "system", "content", prompt.systemPrompt() + "\nReturn only JSON matching this schema: " + prompt.schemaJson()),
             Map.of("role", "user", "content", prompt.instruction())
-        ), true);
+        ));
+        JsonNode root = call(messages, true);
         String content = stripCodeFence(root.path("choices").path(0).path("message").path("content").asText());
-        if (!validJson(content)) {
-            root = call(List.of(
-                Map.of("role", "system", "content", "Repair the following value into JSON only. Schema: " + prompt.schemaJson()),
-                Map.of("role", "user", "content", content)
-            ), true);
+        if (!validJson(content, prompt)) {
+            messages.add(Map.of("role", "assistant", "content", content));
+            messages.add(Map.of("role", "user", "content",
+                "上一条输出未通过 JSON 契约校验。保留原始系统约束与用户事实，仅修复格式、字段、类型和范围；不要增加新事实。只返回匹配 Schema 的 JSON 对象。"));
+            root = call(messages, true);
             content = stripCodeFence(root.path("choices").path(0).path("message").path("content").asText());
-            if (!validJson(content)) {
-                throw unavailable("AI_INVALID_JSON");
+            if (!validJson(content, prompt)) {
+                throw unavailable("GOAL_TEMPLATE".equals(prompt.scene()) ? "AI_INVALID_GOAL_TEMPLATE" : "AI_INVALID_JSON");
             }
         }
+        if ("GOAL_TEMPLATE".equals(prompt.scene())) content = GoalDraftContract.parse(objectMapper, content).toString();
         return new StructuredResult(
             content,
             root.path("model").asText(model), root.path("id").asText(),
@@ -101,9 +105,14 @@ public class QwenHttpProvider implements QwenProvider {
         return trimmed;
     }
 
-    private boolean validJson(String value) {
+    private boolean validJson(String value, StructuredPrompt prompt) {
         try {
-            return objectMapper.readTree(value) != null;
+            if ("GOAL_TEMPLATE".equals(prompt.scene())) {
+                GoalDraftContract.parse(objectMapper, value);
+                return true;
+            }
+            JsonNode root = objectMapper.reader().with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).readTree(value);
+            return root != null && root.isObject();
         } catch (Exception exception) {
             return false;
         }
@@ -117,14 +126,15 @@ public class QwenHttpProvider implements QwenProvider {
         AtomicReference<String> responseModel = new AtomicReference<>(model);
         AtomicReference<Integer> inputTokens = new AtomicReference<>(0);
         AtomicReference<Integer> outputTokens = new AtomicReference<>(0);
-        HttpRequest request = request(
-            List.of(
-                Map.of("role", "system", "content", prompt.systemPrompt()),
-                Map.of("role", "user", "content", prompt.userMessage())
-            ),
-            false,
-            true
-        );
+        List<Map<String, String>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "system", "content", prompt.systemPrompt()));
+        for (ChatMessage message : prompt.history()) {
+            if ("USER".equals(message.role()) || "ASSISTANT".equals(message.role())) {
+                messages.add(Map.of("role", "USER".equals(message.role()) ? "user" : "assistant", "content", message.content()));
+            }
+        }
+        messages.add(Map.of("role", "user", "content", prompt.userMessage()));
+        HttpRequest request = request(messages, false, true);
         try {
             HttpResponse<Stream<String>> response = client.send(request, HttpResponse.BodyHandlers.ofLines());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {

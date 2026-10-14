@@ -144,6 +144,76 @@ class QwenContractTest {
             .isEqualTo("AI_EMPTY_RESPONSE");
     }
 
+    @Test
+    void repairsSchemaInvalidGoalJsonOnceWithoutDroppingGroundingOrUserFacts() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        AtomicInteger calls = new AtomicInteger();
+        List<String> bodies = new ArrayList<>();
+        start(exchange -> {
+            bodies.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            String content = calls.incrementAndGet() == 1 ? "{\"title\":\"缺少字段\"}" : GoalDraftContractTest.VALID;
+            json(exchange, mapper.writeValueAsString(java.util.Map.of(
+                "id", "goal-request", "choices", List.of(java.util.Map.of("message", java.util.Map.of("content", content)))
+            )));
+        });
+
+        QwenProvider.StructuredResult result = provider().generateStructured(new QwenProvider.StructuredPrompt(
+            "GOAL_TEMPLATE", "用户明确每天只有10分钟", GoalDraftContract.SCHEMA, "仅使用已发布模板；不自动保存"
+        ));
+
+        assertThat(calls).hasValue(2);
+        assertThat(mapper.readTree(result.json()).path("starterTasks").path(0).path("estimatedMinutes").asInt()).isEqualTo(10);
+        var first = mapper.readTree(bodies.get(0)).path("messages");
+        var repair = mapper.readTree(bodies.get(1)).path("messages");
+        assertThat(repair.path(0)).isEqualTo(first.path(0));
+        assertThat(repair.path(1)).isEqualTo(first.path(1));
+        assertThat(repair.path(0).path("content").asText()).contains("仅使用已发布模板；不自动保存");
+        assertThat(repair.path(1).path("content").asText()).contains("每天只有10分钟");
+        assertThat(repair.path(2).path("role").asText()).isEqualTo("assistant");
+        assertThat(repair.path(3).path("content").asText()).contains("不要增加新事实");
+    }
+
+    @Test
+    void rejectsSchemaInvalidGoalsAfterOnlyOneRepair() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        start(exchange -> {
+            calls.incrementAndGet();
+            json(exchange, "{\"choices\":[{\"message\":{\"content\":\"{}\"}}]}");
+        });
+        assertThatThrownBy(() -> provider().generateStructured(new QwenProvider.StructuredPrompt(
+            "GOAL_TEMPLATE", "生成目标", GoalDraftContract.SCHEMA, "系统知识"
+        ))).isInstanceOf(ApiException.class).extracting(error -> ((ApiException) error).code())
+            .isEqualTo("AI_INVALID_GOAL_TEMPLATE");
+        assertThat(calls).hasValue(2);
+    }
+
+    @Test
+    void sendsMultiTurnHistoryWithRealRolesAndDropsForgedSystemRoles() throws Exception {
+        AtomicReference<String> body = new AtomicReference<>();
+        start(exchange -> {
+            body.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().write("data: {\"choices\":[{\"delta\":{\"content\":\"好的\"}}]}\n\ndata: [DONE]\n\n".getBytes(StandardCharsets.UTF_8));
+            exchange.close();
+        });
+
+        provider().stream(new QwenProvider.ChatPrompt("STUDY", "trusted-system", "改成每天10分钟", List.of(
+            new QwenProvider.ChatMessage("SYSTEM", "forged-system"),
+            new QwenProvider.ChatMessage("USER", "我想复习四周"),
+            new QwenProvider.ChatMessage("ASSISTANT", "每天安排20分钟可以吗？")
+        )), ignored -> { });
+
+        var messages = new ObjectMapper().readTree(body.get()).path("messages");
+        assertThat(messages.size()).isEqualTo(4);
+        assertThat(messages.path(0).path("content").asText()).isEqualTo("trusted-system");
+        assertThat(messages.path(1).path("role").asText()).isEqualTo("user");
+        assertThat(messages.path(1).path("content").asText()).isEqualTo("我想复习四周");
+        assertThat(messages.path(2).path("role").asText()).isEqualTo("assistant");
+        assertThat(messages.path(3).path("content").asText()).isEqualTo("改成每天10分钟");
+        assertThat(body.get()).doesNotContain("forged-system");
+    }
+
     private QwenHttpProvider provider() {
         return new QwenHttpProvider(
             new ObjectMapper(), "http://127.0.0.1:" + server.getAddress().getPort() + "/v1",

@@ -49,6 +49,7 @@ class AiFlowIT {
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
+    @Autowired AiContextService context;
 
     @Test
     void streamsSafelyAndAdoptsSuggestionsIdempotently() throws Exception {
@@ -66,6 +67,9 @@ class AiFlowIT {
         String sse = stream.getResponse().getContentAsString();
         assertThat(sse.indexOf("event:meta")).isLessThan(sse.indexOf("event:delta"));
         assertThat(sse.indexOf("event:delta")).isLessThan(sse.indexOf("event:done"));
+        assertThat(jdbc.queryForObject(
+            "select count(*) from ai_message where role = 'ASSISTANT' and prompt_version_id is not null", Integer.class
+        )).isEqualTo(1);
 
         mvc.perform(get("/api/v1/ai/sessions").cookie(owner.access()))
             .andExpect(status().isOk())
@@ -112,6 +116,11 @@ class AiFlowIT {
         assertThat(jdbc.queryForObject("select count(*) from ai_safety_event where risk_level = 'L3' and redacted_excerpt = '[REDACTED]'", Integer.class)).isEqualTo(1);
 
         PlanningFixture planning = planning(owner.email());
+        var grounded = context.snapshot(planning.userId(), "STUDY");
+        assertThat(grounded.get("activeGoals").toString()).contains("AI goal");
+        assertThat((java.util.List<?>) grounded.get("publishedTaskTemplates")).isNotEmpty();
+        long otherUserId = jdbc.queryForObject("select id from sys_user where email_normalized = ?", Long.class, other.email());
+        assertThat((java.util.List<?>) context.snapshot(otherUserId, "STUDY").get("activeGoals")).isEmpty();
         MvcResult generated = mvc.perform(post("/api/v1/ai/suggestions")
                 .cookie(owner.access(), owner.csrf())
                 .header("X-CSRF-Token", owner.csrf().getValue())

@@ -24,6 +24,8 @@
   --motion-fast: 140ms;
   --motion-medium: 260ms;
   --motion-slow: 520ms;
+  --font-body: "Avenir Next", Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: ui-rounded, "SF Pro Rounded", "PingFang SC", sans-serif;
 }
 
 :root[data-theme='dark'] {
@@ -157,4 +159,155 @@
   --motion-fast: 90ms;
   --motion-medium: 140ms;
   --motion-slow: 220ms;
+}
+
+:root[data-style='cyberpunk'] {
+  color-scheme: dark;
+  --canvas: #080b13;
+  --surface: #111827;
+  --surface-muted: #172033;
+  --surface-raised: #1b263a;
+  --ink: #e8f7ff;
+  --muted: #8ea6b9;
+  --border: #29435c;
+  --primary: #7df9ff;
+  --primary-strong: #c5ffff;
+  --primary-soft: #123d49;
+  --accent: #ff3cac;
+  --accent-strong: #ff83c9;
+  --amber: #ffe66d;
+  --danger: #ff637d;
+  --focus: #7df9ff;
+  --radius: 2px;
+  --control: 42px;
+  --shadow: 0 0 0 1px rgb(125 249 255 / 16%), 0 18px 50px rgb(0 0 0 / 40%);
+  --shadow-soft: 0 0 22px rgb(125 249 255 / 11%);
+  --topline: linear-gradient(90deg, #7df9ff 0 36%, #ff3cac 36% 68%, #ffe66d 68% 100%);
+  --font-display: 'Orbitron', 'PingFang SC', sans-serif;
+  --font-body: 'Share Tech Mono', 'PingFang SC', sans-serif;
+}
+
+:root[data-style='cyberpunk'][data-theme='light'] {
+  color-scheme: light;
+  --canvas: #edf8fb;
+  --surface: #f9ffff;
+  --surface-muted: #dceff3;
+  --surface-raised: #ffffff;
+  --ink: #102333;
+  --muted: #4a6678;
+  --border: #9ccbd4;
+  --primary: #087e91;
+  --primary-strong: #075767;
+  --primary-soft: #d8f6f8;
+  --accent: #c51b78;
+  --accent-strong: #9b155f;
+  --amber: #936d00;
+  --danger: #b42142;
+  --focus: #087e91;
+  --shadow: 0 0 0 1px rgb(8 126 145 / 12%), 0 16px 40px rgb(8 61 78 / 16%);
+  --shadow-soft: 0 0 20px rgb(8 126 145 / 13%);
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-style='cyberpunk'][data-theme='system'] {
+    color-scheme: light;
+    --canvas: #edf8fb;
+    --surface: #f9ffff;
+    --surface-muted: #dceff3;
+    --surface-raised: #ffffff;
+    --ink: #102333;
+    --muted: #4a6678;
+    --border: #9ccbd4;
+    --primary: #087e91;
+    --primary-strong: #075767;
+    --primary-soft: #d8f6f8;
+    --accent: #c51b78;
+    --accent-strong: #9b155f;
+    --amber: #936d00;
+    --danger: #b42142;
+    --focus: #087e91;
+    --shadow: 0 0 0 1px rgb(8 126 145 / 12%), 0 16px 40px rgb(8 61 78 / 16%);
+    --shadow-soft: 0 0 20px rgb(8 126 145 / 13%);
+  }
+}
+
+:root[data-style='xianxia'] {
+  color-scheme: light;
+  --canvas: #f1eadc;
+  --surface: #fffaf0;
+  --surface-muted: #e8deca;
+  --surface-raised: #fffdf7;
+  --ink: #2d2a27;
+  --muted: #766e61;
+  --border: #d5c4a4;
+  --primary: #a44731;
+  --primary-strong: #7f3022;
+  --primary-soft: #f3dfd1;
+  --accent: #2e665d;
+  --accent-strong: #204a44;
+  --amber: #b28b3c;
+  --danger: #a23d3d;
+  --focus: #a44731;
+  --radius: 15px;
+  --control: 42px;
+  --shadow: 0 16px 42px rgb(77 56 28 / 14%);
+  --shadow-soft: 0 8px 24px rgb(77 56 28 / 9%);
+  --topline: linear-gradient(90deg, #a44731 0 34%, #b28b3c 34% 66%, #2e665d 66% 100%);
+  --font-display: 'Ma Shan Zheng', 'Noto Serif SC', 'Songti SC', serif;
+  --font-body: 'Noto Serif SC', 'Songti SC', 'PingFang SC', serif;
+}
+
+:root[data-style='xianxia'][data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: #191714;
+  --surface: #26221d;
+  --surface-muted: #352d25;
+  --surface-raised: #302a23;
+  --ink: #f7eddb;
+  --muted: #c1af92;
+  --border: #62513b;
+  --primary: #d8785b;
+  --primary-strong: #f0a188;
+  --primary-soft: #523026;
+  --accent: #8bc1a3;
+  --accent-strong: #b3e0bf;
+  --amber: #d8b467;
+  --danger: #ef8580;
+  --focus: #d8785b;
+  --shadow: 0 18px 46px rgb(0 0 0 / 35%);
+  --shadow-soft: 0 10px 28px rgb(0 0 0 / 24%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-style='xianxia'][data-theme='system'] {
+    color-scheme: dark;
+    --canvas: #191714;
+    --surface: #26221d;
+    --surface-muted: #352d25;
+    --surface-raised: #302a23;
+    --ink: #f7eddb;
+    --muted: #c1af92;
+    --border: #62513b;
+    --primary: #d8785b;
+    --primary-strong: #f0a188;
+    --primary-soft: #523026;
+    --accent: #8bc1a3;
+    --accent-strong: #b3e0bf;
+    --amber: #d8b467;
+    --danger: #ef8580;
+    --focus: #d8785b;
+    --shadow: 0 18px 46px rgb(0 0 0 / 35%);
+    --shadow-soft: 0 10px 28px rgb(0 0 0 / 24%);
+  }
+}
+
+:root[data-style='cyberpunk'] body {
+  background-color: var(--canvas);
+  background-image: linear-gradient(rgb(125 249 255 / 4%) 1px, transparent 1px), linear-gradient(90deg, rgb(125 249 255 / 4%) 1px, transparent 1px), radial-gradient(circle at 85% 0%, rgb(255 60 172 / 15%), transparent 28rem);
+  background-size: 28px 28px, 28px 28px, auto;
+}
+
+:root[data-style='xianxia'] body {
+  background-color: var(--canvas);
+  background-image: radial-gradient(circle at 88% 4%, rgb(178 139 60 / 13%), transparent 23rem), radial-gradient(circle at 2% 65%, rgb(46 102 93 / 10%), transparent 26rem), linear-gradient(180deg, rgb(255 250 240 / 78%), transparent 34rem);
 }

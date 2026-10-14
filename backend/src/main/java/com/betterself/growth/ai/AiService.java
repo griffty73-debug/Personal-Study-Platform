@@ -30,7 +30,8 @@ public class AiService {
     private final CrisisResponseService crisis;
     private final PublicIdGenerator ids;
     private final Clock clock;
-    private final com.betterself.growth.daily.DailyStatusService dailyStatus;
+    private final AiContextService context;
+    private final AiPromptService prompts;
 
     public AiService(
         JdbcTemplate jdbc,
@@ -39,7 +40,8 @@ public class AiService {
         CrisisResponseService crisis,
         PublicIdGenerator ids,
         Clock clock,
-        com.betterself.growth.daily.DailyStatusService dailyStatus
+        AiContextService context,
+        AiPromptService prompts
     ) {
         this.jdbc = jdbc;
         this.provider = provider;
@@ -47,7 +49,8 @@ public class AiService {
         this.crisis = crisis;
         this.ids = ids;
         this.clock = clock;
-        this.dailyStatus = dailyStatus;
+        this.context = context;
+        this.prompts = prompts;
     }
 
     @Transactional
@@ -153,6 +156,7 @@ public class AiService {
         }
         String scene = jdbc.queryForObject("select scene from ai_session where id = ?", String.class, sessionId);
         SafetyService.SafetyDecision input = safety.classifyInput(scene, command.message());
+        List<QwenProvider.ChatMessage> history = input.allowGeneration() ? context.history(userId, sessionId, false) : List.of();
         insertMessage(sessionId, userId, "USER", command.message(), input.level(), null, "COMPLETED", null);
         try {
             if (input.level() == RiskLevel.L3) {
@@ -177,18 +181,17 @@ public class AiService {
                 emitter.complete();
                 return;
             }
-            String systemPrompt = prompt(scene);
-            systemPrompt = withDailyStatus(systemPrompt, userId);
+            PublishedPrompt version = prompt(scene);
             List<String> deltas = new ArrayList<>();
             QwenProvider.StreamMetadata metadata = provider.stream(
-                new QwenProvider.ChatPrompt(scene, systemPrompt, command.message()), deltas::add
+                prompts.chat(userId, scene, version.text(), command.message(), history), deltas::add
             );
             String content = String.join("", deltas);
             SafetyService.SafetyDecision output = safety.classifyOutput(scene, content);
             if (!output.allowGeneration()) {
                 String boundary = "这次回复未通过安全检查。你可以缩小问题范围，或改用手动计划功能。";
                 String assistantId = insertMessage(
-                    sessionId, userId, "ASSISTANT", boundary, output.level(), metadata, "BLOCKED", null
+                    sessionId, userId, "ASSISTANT", boundary, output.level(), metadata, "BLOCKED", version.id()
                 );
                 emitter.send(SseEmitter.event().name("meta").data(new StreamMeta(sessionPublicId, assistantId, metadata.model(), output.level().name())));
                 emitter.send(SseEmitter.event().name("safety").data(new SafetyNotice(output.level().name(), boundary)));
@@ -197,7 +200,7 @@ public class AiService {
                 return;
             }
             String assistantId = insertMessage(
-                sessionId, userId, "ASSISTANT", content, output.level(), metadata, "COMPLETED", null
+                sessionId, userId, "ASSISTANT", content, output.level(), metadata, "COMPLETED", version.id()
             );
             emitter.send(SseEmitter.event().name("meta").data(new StreamMeta(sessionPublicId, assistantId, metadata.model(), output.level().name())));
             for (String delta : deltas) {
@@ -280,10 +283,10 @@ public class AiService {
         return id;
     }
 
-    private String prompt(String scene) {
-        String prompt = jdbc.query(
-            "select system_prompt from ai_prompt_version where scene = ? and status = 'PUBLISHED' order by version desc limit 1",
-            rs -> rs.next() ? rs.getString(1) : null,
+    private PublishedPrompt prompt(String scene) {
+        PublishedPrompt prompt = jdbc.query(
+            "select id, system_prompt from ai_prompt_version where scene = ? and status = 'PUBLISHED' order by version desc limit 1",
+            rs -> rs.next() ? new PublishedPrompt(rs.getLong("id"), rs.getString("system_prompt")) : null,
             scene
         );
         if (prompt == null) {
@@ -292,24 +295,7 @@ public class AiService {
         return prompt;
     }
 
-    private String withDailyStatus(String systemPrompt, long userId) {
-        com.betterself.growth.daily.DailyStatusService.StatusView status = dailyStatus.latest(userId);
-        if (status == null) {
-            return systemPrompt;
-        }
-        String energy = switch (status.energy()) {
-            case "LOW" -> "偏低";
-            case "OPEN" -> "充足";
-            default -> "稳定";
-        };
-        String advice = switch (status.advice()) {
-            case "SHRINK" -> "缩小任务：建议今天保留一件最小行动，降低完成比例目标";
-            case "KEEP" -> "保持原计划：状态和时间足够，按原计划推进";
-            default -> "轻量推进：建议先完成一项任务，其余根据实际精力决定";
-        };
-        return systemPrompt + "\n\n【用户今日状态检查】精力：" + energy
-            + "，可用时间：" + status.availableMinutes() + " 分钟，节奏建议：" + advice
-            + "。安排建议时优先遵循该节奏。";
+    private record PublishedPrompt(long id, String text) {
     }
 
     private String normalizeScene(String scene) {

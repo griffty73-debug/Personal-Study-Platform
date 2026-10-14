@@ -49,7 +49,7 @@ class GoalTemplateClampTest {
             """,
             "qwen-test", "req-1", 10, 20, 500L
         );
-        var view = new GoalTemplateService(null, null, null, mapper).parse("session-1", result);
+        var view = new GoalTemplateService(null, null, null, mapper, null, null).parse("session-1", result);
         assertThat(view.dimensionCode()).isEqualTo("WELLBEING");
         assertThat(view.durationDays()).isEqualTo(14);
         assertThat(view.starterTasks().get(0).estimatedMinutes()).isEqualTo(5);

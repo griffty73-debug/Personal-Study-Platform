@@ -22,6 +22,8 @@ describe('privacy settings', () => {
       configurable: true,
     })
     document.documentElement.removeAttribute('data-theme')
+    document.documentElement.removeAttribute('data-style')
+    document.documentElement.removeAttribute('data-background')
     document.documentElement.removeAttribute('data-accent')
     document.documentElement.removeAttribute('data-density')
     document.documentElement.removeAttribute('data-motion')
@@ -54,15 +56,24 @@ describe('privacy settings', () => {
     const wrapper = mount(SettingsView, { global: { plugins: [createPinia(), router] } })
     await flushPromises()
 
+    expect(wrapper.text()).toContain('纸面')
+    expect(wrapper.text()).not.toContain('直面')
+
     await wrapper.findAll('button').find(button => button.text().includes('深色'))!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text().includes('赛博朋克'))!.trigger('click')
+    await wrapper.findAll('button').find(button => button.text().includes('默认'))!.trigger('click')
     await wrapper.get('button[aria-label="青瓷微风"]').trigger('click')
+    await wrapper.findAll('button').find(button => button.text().includes('镜面'))!.trigger('click')
     await wrapper.findAll('button').find(button => button.text().includes('紧凑'))!.trigger('click')
     await wrapper.findAll('button').find(button => button.text().includes('关闭'))!.trigger('click')
 
     expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(document.documentElement.dataset.style).toBe('default')
+    expect(document.documentElement.dataset.background).toBe('mirror')
     expect(document.documentElement.dataset.accent).toBe('ocean')
     expect(document.documentElement.dataset.density).toBe('compact')
     expect(document.documentElement.dataset.motion).toBe('off')
     expect(storage.get('better-self:appearance')).toContain('"accent":"ocean"')
+    expect(storage.get('better-self:appearance')).toContain('"background":"mirror"')
   })
 })

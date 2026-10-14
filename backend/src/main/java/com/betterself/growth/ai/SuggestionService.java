@@ -54,7 +54,7 @@ public class SuggestionService {
                     "maxProperties":2,
                     "additionalProperties":{"type":"integer","minimum":1,"maximum":30}
                   },
-                  "proposedLocalTime":{"type":"string","pattern":"^(?:[01]\\d|2[0-3]):[0-5]\\d$"}
+                  "proposedLocalTime":{"type":"string","pattern":"^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"}
                 }
               }
             }
@@ -70,6 +70,7 @@ public class SuggestionService {
     private final PlanningService planning;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final AiPromptService prompts;
 
     public SuggestionService(
         JdbcTemplate jdbc,
@@ -79,7 +80,8 @@ public class SuggestionService {
         IdempotencyService idempotency,
         PlanningService planning,
         ObjectMapper objectMapper,
-        Clock clock
+        Clock clock,
+        AiPromptService prompts
     ) {
         this.jdbc = jdbc;
         this.provider = provider;
@@ -89,12 +91,16 @@ public class SuggestionService {
         this.planning = planning;
         this.objectMapper = objectMapper;
         this.clock = clock;
+        this.prompts = prompts;
     }
 
     @Transactional
     public SuggestionSetView generate(long userId, GenerateCommand command) {
-        if (command == null || command.prompt() == null || command.prompt().isBlank()) {
+        if (command == null || command.prompt() == null || command.prompt().isBlank() || command.prompt().length() > 4000) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_AI_PROMPT", "A prompt is required");
+        }
+        if (command.scene() == null || !List.of("STUDY", "FITNESS", "CAREER", "EMOTIONAL_SUPPORT").contains(command.scene())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_AI_SCENE", "AI scene is invalid");
         }
         SafetyService.SafetyDecision decision = safety.classifyInput(command.scene(), command.prompt());
         if (!decision.allowGeneration()) {
@@ -102,9 +108,17 @@ public class SuggestionService {
         }
         GoalRow goal = goal(userId, command.goalPublicId());
         QwenProvider.StructuredResult result = provider.generateStructured(
-            new QwenProvider.StructuredPrompt(command.scene(), suggestionInstruction(command), SCHEMA)
+            prompts.suggestions(userId, command.scene(), command.prompt(), Map.of(
+                "title", goal.title(), "description", goal.description() == null ? "" : goal.description(),
+                "dimensionCode", goal.dimensionCode()
+            ), SCHEMA)
         );
         List<SuggestionItem> items = parseAndValidate(userId, result.json());
+        String output = items.stream().map(item -> item.title() + " " + item.description())
+            .collect(java.util.stream.Collectors.joining("\n"));
+        if (!safety.classifyOutput(command.scene(), output).allowGeneration()) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "AI_SAFETY_BLOCKED", "任务建议未通过安全检查");
+        }
         String publicId = ids.next();
         jdbc.update(
             """
@@ -223,31 +237,18 @@ public class SuggestionService {
 
     private GoalRow goal(long userId, String publicId) {
         GoalRow row = jdbc.query(
-            "select id from growth_goal where user_id = ? and public_id = ? and status = 'ACTIVE'",
-            rs -> rs.next() ? new GoalRow(rs.getLong(1)) : null,
+            """
+                select g.id, left(g.title, 160) title, left(g.description, 1000) description, d.code
+                from growth_goal g join growth_dimension d on d.id = g.dimension_id
+                where g.user_id = ? and g.public_id = ? and g.status = 'ACTIVE'
+                """,
+            rs -> rs.next() ? new GoalRow(rs.getLong("id"), rs.getString("title"), rs.getString("description"), rs.getString("code")) : null,
             userId, publicId
         );
         if (row == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "GOAL_NOT_FOUND", "Resource not found");
         }
         return row;
-    }
-
-    private String suggestionInstruction(GenerateCommand command) {
-        String dimensions = switch (command.scene() == null ? "" : command.scene()) {
-            case "STUDY" -> "KNOWLEDGE";
-            case "FITNESS" -> "HEALTH";
-            case "CAREER" -> "CAREER";
-            case "EMOTIONAL_SUPPORT" -> "WELLBEING or RELATIONSHIP";
-            default -> "KNOWLEDGE";
-        };
-        return """
-            Create 2 practical tasks for this request: %s
-            Use Chinese text. Return exactly the JSON object required by the schema and no markdown.
-            Each item must include all six fields. estimatedMinutes must be 5 to 60; difficulty must be 1 to 3.
-            proposedLocalTime must be a 24-hour HH:mm value such as 09:00.
-            dimensionWeights may only use these exact dimension keys: %s. Each weight must be 1 to 30.
-            """.formatted(command.prompt(), dimensions);
     }
 
     private List<SuggestionItem> parseAndValidate(long userId, String value) {
@@ -364,7 +365,7 @@ public class SuggestionService {
     ) {
     }
 
-    private record GoalRow(long id) {
+    private record GoalRow(long id, String title, String description, String dimensionCode) {
     }
 
     private record QuietHours(LocalTime start, LocalTime end) {

@@ -1,8 +1,12 @@
 @import './tokens.css';
+@import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700;900&family=Orbitron:wght@500;600;700&family=Share+Tech+Mono&display=swap');
 
 * { box-sizing: border-box; }
-html { background: var(--canvas); color: var(--ink); font-family: "Avenir Next", Inter, "PingFang SC", "Microsoft YaHei", sans-serif; }
-body { margin: 0; min-width: 320px; min-height: 100vh; background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 52%, var(--canvas)) 0, var(--canvas) 430px); }
+html { background: var(--canvas); color: var(--ink); font-family: var(--font-body); }
+body { position: relative; margin: 0; min-width: 320px; min-height: 100vh; background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 52%, var(--canvas)) 0, var(--canvas) 430px); }
+body::before,
+body::after { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity var(--motion-medium) ease; }
+.shell { position: relative; z-index: 1; }
 ::selection { background: color-mix(in srgb, var(--primary) 24%, transparent); color: var(--ink); }
 button, input, select, textarea { font: inherit; letter-spacing: 0; }
 button, .button { min-height: var(--control); border: 1px solid transparent; border-radius: var(--radius); cursor: pointer; font-weight: 650; line-height: 1.2; vertical-align: middle; }
@@ -19,7 +23,14 @@ button:disabled { cursor: not-allowed; opacity: .62; }
 :root[data-density='compact'] .page { padding-top: 20px; padding-bottom: 46px; }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
 .page-head > * { min-width: 0; }
-.page-head h1 { margin: 0; color: var(--ink); font-family: ui-rounded, "SF Pro Rounded", "PingFang SC", sans-serif; font-size: 30px; line-height: 1.15; letter-spacing: 0; }
+.page-head h1 { margin: 0; color: var(--ink); font-family: var(--font-display); font-size: 30px; line-height: 1.15; letter-spacing: 0; }
+:root[data-style='cyberpunk'] .page-head h1,
+:root[data-style='xianxia'] .page-head h1,
+:root[data-style='cyberpunk'] h2,
+:root[data-style='xianxia'] h2,
+:root[data-style='cyberpunk'] h3,
+:root[data-style='xianxia'] h3 { font-family: var(--font-display); }
+:root[data-style='cyberpunk'] .page-head h1 { letter-spacing: .04em; text-transform: uppercase; }
 .eyebrow { margin: 0 0 5px; color: var(--primary); font-size: 12px; font-weight: 800; letter-spacing: 0; }
 .band { position: relative; border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent); padding: 20px 0; }
 :root[data-density='compact'] .band { padding: 15px 0; }
@@ -78,3 +89,86 @@ input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color:
 }
 @keyframes feedback-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes page-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+:root[data-style='cyberpunk'] button,
+:root[data-style='cyberpunk'] .button { border-radius: 1px; text-transform: uppercase; letter-spacing: .055em; }
+:root[data-style='cyberpunk'] .primary { color: #071018; box-shadow: 4px 4px 0 rgb(255 60 172 / 42%); }
+:root[data-style='cyberpunk'] .secondary { box-shadow: 3px 3px 0 rgb(125 249 255 / 18%); }
+:root[data-style='cyberpunk'] .band { border-top-style: dashed; }
+:root[data-style='cyberpunk'] .feedback-banner,
+:root[data-style='cyberpunk'] .error { border-left-width: 1px; box-shadow: inset 4px 0 var(--primary), var(--shadow-soft); }
+:root[data-style='cyberpunk'] .field input,
+:root[data-style='cyberpunk'] .field select,
+:root[data-style='cyberpunk'] .field textarea { border-width: 1px 1px 1px 3px; background: color-mix(in srgb, var(--surface) 90%, transparent); }
+
+:root[data-style='xianxia'] .primary { box-shadow: 0 7px 0 color-mix(in srgb, var(--primary-strong) 30%, transparent), var(--shadow-soft); }
+:root[data-style='xianxia'] .secondary { box-shadow: 0 3px 0 color-mix(in srgb, var(--border) 65%, transparent); }
+:root[data-style='xianxia'] .band { border-top-color: color-mix(in srgb, var(--amber) 42%, var(--border)); }
+:root[data-style='xianxia'] .eyebrow { letter-spacing: .12em; }
+:root[data-style='xianxia'] .feedback-banner { border-top-right-radius: 34px; border-bottom-left-radius: 34px; }
+
+:root[data-style='cyberpunk'] body::before {
+  opacity: 1;
+  background: repeating-linear-gradient(180deg, transparent 0 5px, rgb(125 249 255 / 3%) 5px 6px), linear-gradient(90deg, transparent 0 92%, rgb(125 249 255 / 10%) 92% 92.2%, transparent 92.2% 100%);
+  mix-blend-mode: screen;
+}
+
+:root[data-style='cyberpunk'] body::after {
+  opacity: 1;
+  inset: auto 0 0;
+  height: 38vh;
+  background: linear-gradient(180deg, transparent, rgb(255 60 172 / 8%));
+  clip-path: polygon(0 100%, 0 68%, 13% 68%, 13% 51%, 22% 51%, 22% 75%, 36% 75%, 36% 42%, 49% 42%, 49% 63%, 61% 63%, 61% 33%, 76% 33%, 76% 57%, 88% 57%, 88% 24%, 100% 24%, 100% 100%);
+}
+
+:root[data-style='xianxia'] body::before {
+  opacity: 1;
+  inset: 0 0 auto;
+  height: 260px;
+  background: radial-gradient(ellipse 240px 70px at 9% 35%, rgb(255 255 255 / 74%) 0 48%, transparent 52%), radial-gradient(ellipse 330px 95px at 25% 15%, rgb(255 255 255 / 66%) 0 48%, transparent 52%), radial-gradient(ellipse 260px 80px at 50% 44%, rgb(255 255 255 / 62%) 0 48%, transparent 52%), radial-gradient(ellipse 330px 100px at 82% 9%, rgb(255 255 255 / 70%) 0 48%, transparent 52%);
+  filter: blur(8px);
+}
+
+:root[data-style='xianxia'] body::after {
+  opacity: 1;
+  inset: auto 0 0;
+  height: 42vh;
+  background: linear-gradient(180deg, transparent, rgb(46 102 93 / 7%)), radial-gradient(ellipse 500px 180px at 12% 100%, rgb(46 102 93 / 11%), transparent 70%), radial-gradient(ellipse 640px 220px at 90% 100%, rgb(164 71 49 / 8%), transparent 70%);
+}
+
+:root[data-background='smooth'] body {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--surface) 68%, var(--canvas)) 0, var(--canvas) 520px);
+}
+
+:root[data-background='mirror'] body {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--surface) 86%, var(--primary) 14%) 0, transparent 22%, color-mix(in srgb, var(--surface) 84%, var(--primary) 16%) 44%, transparent 66%, color-mix(in srgb, var(--surface) 90%, var(--accent) 10%) 100%), linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 7%, transparent) 50%, transparent);
+  background-size: auto, 100% 100%;
+}
+
+:root[data-background='ripple'] body {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--surface) 60%, var(--canvas)) 0, var(--canvas) 620px);
+}
+
+:root[data-background='paper'] body {
+  background-image: repeating-linear-gradient(164deg, transparent 0 43px, color-mix(in srgb, var(--ink) 3%, transparent) 44px 45px, transparent 46px 88px), repeating-linear-gradient(21deg, transparent 0 61px, color-mix(in srgb, var(--primary) 3%, transparent) 62px 63px, transparent 64px 124px), linear-gradient(90deg, transparent 0 48.8%, color-mix(in srgb, var(--ink) 3%, transparent) 49.5% 50%, transparent 50.7% 100%), linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, var(--canvas)) 0, var(--canvas) 620px);
+  background-size: auto, auto, 100% 100%, auto;
+}
+
+:root[data-background='mirror'][data-style='cyberpunk'] body {
+  background-image: linear-gradient(180deg, rgb(17 24 39 / 92%) 0, rgb(125 249 255 / 8%) 40%, rgb(17 24 39 / 92%) 42%, rgb(255 60 172 / 7%) 76%, rgb(8 11 19) 100%), linear-gradient(90deg, transparent, rgb(125 249 255 / 8%) 50%, transparent);
+}
+
+:root[data-background='paper'][data-style='cyberpunk'] body {
+  background-image: repeating-linear-gradient(164deg, transparent 0 43px, rgb(125 249 255 / 3%) 44px 45px, transparent 46px 88px), repeating-linear-gradient(21deg, transparent 0 61px, rgb(255 60 172 / 3%) 62px 63px, transparent 64px 124px), linear-gradient(180deg, #111827, #080b13 620px);
+}
+
+:root[data-background='mirror'][data-style='xianxia'] body {
+  background-image: linear-gradient(180deg, rgb(255 250 240 / 86%) 0, rgb(197 161 90 / 8%) 36%, rgb(46 102 93 / 10%) 50%, rgb(255 250 240 / 78%) 66%, rgb(164 71 49 / 8%) 100%);
+}
+
+:root[data-background='paper'][data-style='xianxia'] body {
+  background-image: repeating-linear-gradient(164deg, transparent 0 43px, rgb(67 49 29 / 5%) 44px 45px, transparent 46px 88px), repeating-linear-gradient(21deg, transparent 0 61px, rgb(164 71 49 / 4%) 62px 63px, transparent 64px 124px), linear-gradient(90deg, transparent 0 48.8%, rgb(67 49 29 / 5%) 49.5% 50%, transparent 50.7% 100%), linear-gradient(180deg, #fffaf0, #f1eadc 620px);
+}
+
+:root[data-style='default'] body { background-color: var(--canvas); }
+:root[data-style='default'] .sidebar-note { background: color-mix(in srgb, var(--amber) 8%, var(--surface)); }

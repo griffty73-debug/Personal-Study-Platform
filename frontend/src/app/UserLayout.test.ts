@@ -1,9 +1,11 @@
-import { mount } from '@vue/test-utils'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import UserLayout from './UserLayout.vue'
 import { useAuthStore } from '../modules/auth/auth.store'
+
+enableAutoUnmount(afterEach)
 
 vi.mock('../shared/ui/WelcomeGuide.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('../modules/partners/DesktopPet.vue', () => ({ default: { template: '<div />' } }))
@@ -28,10 +30,15 @@ async function mountLayout(pinia = createPinia(), path = '/today') {
 
 describe('UserLayout', () => {
   beforeEach(() => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
     Object.defineProperty(window, 'localStorage', {
       value: { getItem: vi.fn(() => 'dismissed'), setItem: vi.fn(), removeItem: vi.fn() },
       configurable: true,
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('uses the first Chinese character from the display name as the brand mark', async () => {
@@ -70,5 +77,11 @@ describe('UserLayout', () => {
     const wrapper = await mountLayout(createPinia(), '/friends')
 
     expect(wrapper.get('.mobile-nav button').classes()).toContain('is-active')
+  })
+
+  it('renders a non-interactive canvas layer for the ripple background', async () => {
+    const wrapper = await mountLayout()
+
+    expect(wrapper.get('canvas.ripple-canvas').attributes('aria-hidden')).toBe('true')
   })
 })

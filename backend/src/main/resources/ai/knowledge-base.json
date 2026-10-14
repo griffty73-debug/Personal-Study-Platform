@@ -1,0 +1,82 @@
+{
+  "version": "2026-09-16.1",
+  "entries": [
+    {
+      "id": "navigation",
+      "scenes": [],
+      "keywords": [],
+      "content": "现有用户页面包括今日 /today、目标 /goals、伙伴 /partners、好友 /friends、属性 /attributes、洞察 /insights、AI 助手 /ai、个人资料 /profile、设置 /settings。可以指引用户前往这些已存在的页面；仅凭页面存在不能推断尚未提供的操作能力或用户数据。",
+      "sources": ["frontend/src/app/router.ts"]
+    },
+    {
+      "id": "product-boundary",
+      "scenes": [],
+      "keywords": [],
+      "content": "更好的自己是个人成长系统。AI 助手支持学习 STUDY、健身 FITNESS、职场 CAREER、情绪支持 EMOTIONAL_SUPPORT 四个场景。AI 可进行对话、生成可编辑目标草案和任务建议；回复本身不会创建或修改目标、周计划、任务或完成记录。",
+      "sources": ["backend/src/main/java/com/betterself/growth/ai/AiController.java", "backend/src/main/java/com/betterself/growth/ai/AiService.java", "backend/src/main/java/com/betterself/growth/ai/SuggestionService.java"]
+    },
+    {
+      "id": "goal-workflow",
+      "scenes": [],
+      "keywords": [],
+      "content": "成长目标归属一个成长维度，周期为 14—84 天，起止日期均计入；最多同时存在 3 个 ACTIVE 目标。目标草案只包含 title、description、dimensionCode、durationDays、weeklyFocus、starterTasks；description 用于可观察的完成标准。用户可在 AI 助手的目标草案面板点击“根据对话生成”，编辑后填入目标表单，再明确提交。草案不是已经保存的目标。",
+      "sources": ["backend/src/main/java/com/betterself/growth/goal/GoalPolicy.java", "backend/src/main/java/com/betterself/growth/ai/GoalTemplateService.java", "frontend/src/modules/ai/AiView.vue", "frontend/src/modules/goals/GoalsView.vue"]
+    },
+    {
+      "id": "dimensions",
+      "scenes": [],
+      "keywords": [],
+      "content": "目标草案仅支持五个系统维度：KNOWLEDGE（知识，界面称智力）、HEALTH（健康，界面称体力）、CAREER（职场，界面称执行力）、RELATIONSHIP（关系，界面称社交力）、WELLBEING（心境，界面称心境力）。手动目标支持用户自己的维度，但不能将自定义维度码写入 AI 目标草案。不要把 STUDY 等场景码当作 dimensionCode。",
+      "sources": ["backend/src/main/resources/db/migration/V3__seed_system_dimensions_and_templates.sql", "frontend/src/modules/ai/AiView.vue", "backend/src/main/java/com/betterself/growth/goal/GoalService.java", "backend/src/main/java/com/betterself/growth/ai/GoalTemplateService.java"]
+    },
+    {
+      "id": "task-workflow",
+      "scenes": [],
+      "keywords": [],
+      "content": "目标草案包含 1—3 个起步任务，每个任务只有 title、estimatedMinutes、difficulty，时长 5—60 分钟、难度整数 1—3。手动任务时长支持 5—240 分钟，但 AI 草案和建议必须采用更窄的 5—60 分钟范围。周计划、计划时间、重复规则和维度权重属于任务创建流程，不是目标草案字段。建议采纳必须经用户确认；不能在聊天中声称已采纳。",
+      "sources": ["backend/src/main/java/com/betterself/growth/ai/GoalTemplateService.java", "backend/src/main/java/com/betterself/growth/ai/SuggestionService.java", "backend/src/main/java/com/betterself/growth/goal/DatabasePlanningService.java", "frontend/src/modules/goals/GoalsView.vue"]
+    },
+    {
+      "id": "daily-status",
+      "scenes": [],
+      "keywords": [],
+      "content": "每日状态检查记录 LOW（偏低）、STEADY（稳定）、OPEN（充足）精力和 10—180 分钟可用时间。精力 LOW 或时间少于 20 分钟时建议 SHRINK（缩小任务）；精力 OPEN 且时间至少 45 分钟时建议 KEEP（保持计划）；其余为 LIGHT（轻量推进）。只把用户时区当天的记录称为今日状态，缺失时不要猜测或沿用旧记录。",
+      "sources": ["backend/src/main/java/com/betterself/growth/daily/DailyStatusService.java"]
+    },
+    {
+      "id": "published-templates",
+      "scenes": [],
+      "keywords": [],
+      "content": "任务模板按场景发布并审核。只使用本次上下文提供的 PUBLISHED 模板作为行动依据，不使用已退役模板，不凭空编造课程、书目、训练方案或系统服务。允许围绕用户明确提出的事项对模板中的阅读、练习、记录、复盘等行动做有限改写；这些是建议，不代表用户已经完成。未提供模板时应说明当前缺少系统内依据，不虚构模板。",
+      "sources": ["backend/src/main/java/com/betterself/growth/goal/TaskPresetService.java", "backend/src/main/resources/db/migration/V6__career_task_presets_and_progression.sql"]
+    },
+    {
+      "id": "study-scene",
+      "scenes": ["STUDY"],
+      "keywords": ["学习", "阅读", "复习", "考试"],
+      "content": "学习场景优先使用 KNOWLEDGE，职业角色对应 STUDENT。基于已发布学习模板拆成可执行的小步骤，并通过记录或复盘形成完成标准。不得承诺考试分数、学习效果或虚构课程内容。",
+      "sources": ["backend/src/main/java/com/betterself/growth/career/CareerRole.java", "backend/src/main/resources/db/migration/V4__seed_prompt_and_safety_versions.sql"]
+    },
+    {
+      "id": "fitness-scene",
+      "scenes": ["FITNESS"],
+      "keywords": ["健身", "运动", "睡眠"],
+      "content": "健身场景优先使用 HEALTH，职业角色对应 FITNESS_USER。仅可基于已发布模板提供保守的一般行动安排，避免极限训练、疼痛目标、医疗建议、诊断、处方和效果保证。",
+      "sources": ["backend/src/main/java/com/betterself/growth/career/CareerRole.java", "backend/src/main/resources/db/migration/V4__seed_prompt_and_safety_versions.sql"]
+    },
+    {
+      "id": "career-scene",
+      "scenes": ["CAREER"],
+      "keywords": ["工作", "职场", "职业"],
+      "content": "职场场景优先使用 CAREER，职业角色对应 WORKER。仅安排有边界的工作行动，使用已发布模板辅助规划和复盘，不鼓励过度工作，不承诺升职、收入或职业结果。",
+      "sources": ["backend/src/main/java/com/betterself/growth/career/CareerRole.java", "backend/src/main/resources/db/migration/V4__seed_prompt_and_safety_versions.sql"]
+    },
+    {
+      "id": "emotional-scene",
+      "scenes": ["EMOTIONAL_SUPPORT"],
+      "keywords": ["情绪", "心情", "关系", "沟通", "社交"],
+      "content": "情绪支持场景优先使用 WELLBEING；用户明确关注沟通、关系或支持时可选 RELATIONSHIP。角色对应 EMOTIONAL_SUPPORT_USER。仅提供一般支持，不作诊断、治疗，不使用依赖性语言，不替代专业照护；安全风险处理优先于 JSON 生成。",
+      "sources": ["backend/src/main/java/com/betterself/growth/career/CareerRole.java", "backend/src/main/resources/db/migration/V4__seed_prompt_and_safety_versions.sql", "backend/src/main/java/com/betterself/growth/safety/SafetyService.java"]
+    }
+  ]
+}
